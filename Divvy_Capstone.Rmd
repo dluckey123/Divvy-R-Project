@@ -1,0 +1,125 @@
+---
+title: "Divvy Ride Share"
+author: "Deborah Luckey"
+date: "7/6/2021"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(data.table)
+ 
+```
+
+```{r, include=FALSE}
+#install.packages("readxl")
+library(readxl)
+library(knitr)
+```
+```{r, include=FALSE}
+my_data <- read_excel("my_excel_file.xlsx")
+```
+
+```{r include=FALSE}
+library(zoo)
+```
+
+
+
+
+
+## Agenda
+
+- Purpose
+- Analysis of data for casual riders and members
+- Conclusion
+
+## Purpose
+
+To better understand patterns between casual riders and members and identify trends.
+
+## Average Ride Length and Most Popular Day of Week
+
+```{r convert to minutes, include=FALSE}
+my_data$ride_length=as.numeric(my_data$ended_at - my_data$started_at, units="mins")
+my_data$ride_length[1]
+
+```
+
+```{r get mode function, include=FALSE}
+
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+
+```
+
+
+```{r summary, echo=FALSE}
+tripdata_summary <- my_data %>% 
+  group_by(member_casual) %>% 
+  summarise(avg_ride_length=round(mean(ride_length),2),
+  popular_day=getmode(day_of_week))
+
+  knitr::kable(tripdata_summary, "pipe", col.names = c("Rider Type", "Avg Ride Length", "Popular Day of Week"), align = c("l", "c", "c"))
+```
+
+Average ride length is in minutes.  
+Day of week is numeric starting with Sunday as 1.
+
+## Popular Day of Week by Rider Type
+
+```{r include=FALSE}
+avg_by_day_of_week <- my_data %>% 
+  group_by(member_casual, day_of_week) %>% 
+  summarise(avg_ride_length=mean(ride_length))
+
+```
+
+
+```{r day of week}
+ggplot(data=avg_by_day_of_week, aes(x=day_of_week, y=avg_ride_length, fill=member_casual)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(caption = "Average ride length is in minutes.  
+Day of week is numeric starting with Sunday as 1.")
+
+```
+
+
+
+
+
+## Length of Ride by Season
+
+```{r seasons, include=FALSE}
+yq <- as.yearqtr(as.yearmon(my_data$started_at, "%m/%d/%Y") + 1/12)
+my_data$Season <- factor(format(yq, "%q"), levels = 1:4, 
+                    labels = c("winter", "spring", "summer", "fall"))
+
+```
+
+```{r season summary, include=FALSE}
+season_summary <- my_data %>% 
+  group_by(member_casual, Season) %>% 
+  summarise(avg_ride_length=mean(ride_length))
+
+```
+
+```{r plot}
+ggplot(season_summary, aes(x=Season, y=avg_ride_length, group=member_casual)) +
+  geom_line(aes(linetype=member_casual, color=member_casual))+
+  geom_point(aes(color=member_casual))+
+  theme(legend.position="top")+
+  labs(caption = "Day of week is numeric starting with Sunday as 1")
+
+```
+
+
+## Conclusion
+
+- The casual riders average length time on the bike is double that of the member riders.
+- Though both riders ride more on weekend, casual riders have a greater average length time.
+- Both riders spend more time on bikes in summer, but casual riders average time is considerably more.
